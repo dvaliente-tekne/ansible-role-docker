@@ -23,3 +23,9 @@
     enabled: true
     state: stopped
   when: docker_packages_check.rc == 0
+
+- name: 'Create custom network'
+  ansible.builtin.shell: "{{ item }}"
+  loop:
+    - '/usr/bin/systemctl start docker.service'
+    - '/usr/bin/docker network create --subnet=192.168.75.0/24 dockers'
