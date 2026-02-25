@@ -2,6 +2,17 @@
 ---
 # tasks file for ansible-role-docker
 
+- name: Create /srv/docker directory
+  ansible.builtin.file:
+    path: /srv/docker
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags:
+    - docker
+    - config
+
 - name: Install Docker packages (docker, docker-compose, docker-buildx)
   community.general.pacman:
     name:
@@ -24,8 +35,21 @@
     state: stopped
   when: docker_packages_check.rc == 0
 
-- name: 'Create custom network'
-  ansible.builtin.shell: "{{ item }}"
-  loop:
-    - '/usr/bin/systemctl start docker.service'
-    - '/usr/bin/docker network create --subnet=192.168.75.0/24 dockers'
+- name: Start docker.service
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+  when: docker_packages_check.rc == 0
+
+- name: Check if dockers network exists
+  ansible.builtin.command: docker network inspect dockers
+  register: dockers_network_check
+  changed_when: false
+  failed_when: false
+  when: docker_packages_check.rc == 0
+
+- name: Create dockers network
+  ansible.builtin.command: docker network create --subnet=192.168.75.0/24 dockers
+  when:
+    - docker_packages_check.rc == 0
+    - dockers_network_check.rc != 0
